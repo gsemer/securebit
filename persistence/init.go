@@ -16,7 +16,7 @@ func InitDB(username, password, ip, port, name string) (*gorm.DB, error) {
 	}
 
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
-	db.AutoMigrate(&domain.User{})
+	db.AutoMigrate(&domain.AuthUser{})
 
 	return db, nil
 }

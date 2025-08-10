@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"securebit/config"
+	"securebit/persistence"
 	"securebit/presentation"
 	"time"
 
@@ -13,7 +15,18 @@ import (
 )
 
 func main() {
-	handler := presentation.NewAuthHandler()
+	postgresUsername := config.GetEnv("POSTGRES_USERNAME", "")
+	postgresPassword := config.GetEnv("POSTGRES_PASSWORD", "")
+	postgresDB := config.GetEnv("POSTGRES_DB", "")
+	postgresIP := config.GetEnv("POSTGRES_IP", "")
+	postgresPort := config.GetEnv("POSTGRES_PORT", "")
+
+	db, err := persistence.InitDB(postgresUsername, postgresPassword, postgresIP, postgresPort, postgresDB)
+	if err != nil {
+		log.Fatal("Failed to connect to database: ", err)
+	}
+
+	handler := presentation.NewAuthHandler(db)
 
 	r := mux.NewRouter()
 	s := r.PathPrefix("/v1").Subrouter()
