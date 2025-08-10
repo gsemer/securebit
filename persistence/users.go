@@ -14,10 +14,10 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (ur *UserRepository) Create(authUser domain.AuthUser) error {
+func (ur *UserRepository) Create(authUser domain.AuthUser) (domain.AuthUser, error) {
 	result := ur.db.Create(&authUser)
 	if result.Error != nil {
-		return result.Error
+		return domain.AuthUser{}, result.Error
 	}
-	return nil
+	return authUser, nil
 }

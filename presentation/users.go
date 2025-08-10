@@ -39,7 +39,7 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Username:       register.Username,
 		HashedPassword: string(hashedPassword),
 	}
-	err = auth.ur.Create(authUser)
+	authUser, err = auth.ur.Create(authUser)
 	if err != nil {
 		http.Error(w, "Unable to store user credentials: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -47,9 +47,10 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare data that will be sent to the other service
 	var payloadUser domain.UserPayload = domain.UserPayload{
-		Username: register.Username,
-		Role:     register.Role,
-		Email:    register.Email,
+		AuthUserID: authUser.ID,
+		Username:   register.Username,
+		Role:       register.Role,
+		Email:      register.Email,
 	}
 	payloadBytes, err := json.Marshal(payloadUser)
 	if err != nil {

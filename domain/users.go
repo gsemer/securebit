@@ -3,9 +3,10 @@ package domain
 import "github.com/google/uuid"
 
 type UserPayload struct {
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	Email    string `json:"email"`
+	AuthUserID uuid.UUID `json:"auth_user_id"`
+	Username   string    `json:"username"`
+	Role       string    `json:"role"`
+	Email      string    `json:"email"`
 }
 
 type LoginRequest struct {
@@ -20,5 +21,5 @@ type AuthUser struct {
 }
 
 type UserRepository interface {
-	Create(authUser AuthUser) error
+	Create(authUser AuthUser) (AuthUser, error)
 }
