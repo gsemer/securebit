@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"securebit/presentation"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -15,14 +16,14 @@ func main() {
 	r := mux.NewRouter()
 	s := r.PathPrefix("/v1").Subrouter()
 
-	s.HandleFunc("/register", nil).Methods("POST")
+	s.HandleFunc("/register", presentation.Register).Methods("POST")
 	s.HandleFunc("/login", nil).Methods("POST")
 	s.HandleFunc("/logout", nil).Methods("POST")
 	s.HandleFunc("/refresh", nil).Methods("POST")
 	s.HandleFunc("/validate", nil).Methods("POST")
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    "localhost:8080",
 		Handler: r,
 	}
 	go func() {
