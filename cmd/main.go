@@ -15,7 +15,6 @@ import (
 
 func main() {
 	config := persistence.LoadPostgresConfig()
-
 	db, err := config.Init()
 	if err != nil {
 		log.Fatal("Unable to connect to database: ", err)
@@ -25,13 +24,12 @@ func main() {
 	handler := presentation.NewAuthHandler(userRepo)
 
 	r := mux.NewRouter()
-	s := r.PathPrefix("/v1").Subrouter()
-
-	s.HandleFunc("/register", handler.Register).Methods("POST")
-	s.HandleFunc("/login", nil).Methods("POST")
-	s.HandleFunc("/logout", nil).Methods("POST")
-	s.HandleFunc("/refresh", nil).Methods("POST")
-	s.HandleFunc("/validate", nil).Methods("POST")
+	api := r.PathPrefix("/v1").Subrouter()
+	api.HandleFunc("/register", handler.Register).Methods("POST")
+	api.HandleFunc("/login", nil).Methods("POST")
+	api.HandleFunc("/logout", nil).Methods("POST")
+	api.HandleFunc("/refresh", nil).Methods("POST")
+	api.HandleFunc("/validate", nil).Methods("POST")
 
 	server := &http.Server{
 		Addr:    "localhost:8080",
