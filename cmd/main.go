@@ -26,7 +26,8 @@ func main() {
 		log.Fatal("Failed to connect to database: ", err)
 	}
 
-	handler := presentation.NewAuthHandler(db)
+	userRepo := persistence.NewUserRepository(db)
+	handler := presentation.NewAuthHandler(userRepo)
 
 	r := mux.NewRouter()
 	s := r.PathPrefix("/v1").Subrouter()
