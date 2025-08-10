@@ -13,10 +13,12 @@ import (
 )
 
 func main() {
+	handler := presentation.NewAuthHandler()
+
 	r := mux.NewRouter()
 	s := r.PathPrefix("/v1").Subrouter()
 
-	s.HandleFunc("/register", presentation.Register).Methods("POST")
+	s.HandleFunc("/register", handler.Register).Methods("POST")
 	s.HandleFunc("/login", nil).Methods("POST")
 	s.HandleFunc("/logout", nil).Methods("POST")
 	s.HandleFunc("/refresh", nil).Methods("POST")

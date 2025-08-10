@@ -6,7 +6,13 @@ import (
 	"net/http"
 )
 
-func Register(w http.ResponseWriter, r *http.Request) {
+type AuthHandler struct{}
+
+func NewAuthHandler() *AuthHandler {
+	return &AuthHandler{}
+}
+
+func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body: "+err.Error(), http.StatusBadRequest)
