@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"securebit/config"
 	"securebit/persistence"
 	"securebit/presentation"
 	"time"
@@ -15,15 +14,11 @@ import (
 )
 
 func main() {
-	postgresUsername := config.GetEnv("POSTGRES_USERNAME", "")
-	postgresPassword := config.GetEnv("POSTGRES_PASSWORD", "")
-	postgresDB := config.GetEnv("POSTGRES_DB", "")
-	postgresIP := config.GetEnv("POSTGRES_IP", "")
-	postgresPort := config.GetEnv("POSTGRES_PORT", "")
+	config := persistence.LoadPostgresConfig()
 
-	db, err := persistence.InitDB(postgresUsername, postgresPassword, postgresIP, postgresPort, postgresDB)
+	db, err := config.Init()
 	if err != nil {
-		log.Fatal("Failed to connect to database: ", err)
+		log.Fatal("Unable to connect to database: ", err)
 	}
 
 	userRepo := persistence.NewUserRepository(db)
