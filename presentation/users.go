@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+
+	"gorm.io/gorm"
 )
 
-type AuthHandler struct{}
+type AuthHandler struct {
+	db *gorm.DB
+}
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(db *gorm.DB) *AuthHandler {
+	return &AuthHandler{db: db}
 }
 
 func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
