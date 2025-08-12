@@ -21,3 +21,11 @@ func (ur *UserRepository) Create(authUser domain.AuthUser) (domain.AuthUser, err
 	}
 	return authUser, nil
 }
+
+func (ur *UserRepository) Delete(authUser domain.AuthUser) error {
+	result := ur.db.Delete(&authUser)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}

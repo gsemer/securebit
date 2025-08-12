@@ -65,6 +65,14 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer response.Body.Close()
 
+	if response.StatusCode >= 400 {
+		err := auth.ur.Delete(authUser)
+		if err != nil {
+			http.Error(w, "Unable to delete user credentials: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		http.Error(w, "Failed to read response", http.StatusInternalServerError)

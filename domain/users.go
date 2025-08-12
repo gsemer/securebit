@@ -22,4 +22,5 @@ type AuthUser struct {
 
 type UserRepository interface {
 	Create(authUser AuthUser) (AuthUser, error)
+	Delete(authUser AuthUser) error
 }
