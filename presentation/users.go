@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"securebit/domain"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -27,51 +29,69 @@ type RegisterRequest struct {
 
 func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var register RegisterRequest
-	json.NewDecoder(r.Body).Decode(&register)
-
-	// Store user credentials in a persistent database
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "Unable to hash password: "+err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&register); err != nil {
+		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	var authUser domain.AuthUser = domain.AuthUser{
+
+	// Basic validation
+	if register.Username == "" || register.Password == "" || register.Email == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Password hashing error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	authUser := domain.AuthUser{
 		Username:       register.Username,
 		HashedPassword: string(hashedPassword),
 	}
-	authUser, err = auth.ur.Create(authUser)
+
+	createdUser, err := auth.ur.Create(authUser)
 	if err != nil {
-		http.Error(w, "Unable to store user credentials: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("User creation error: %v", err)
+		http.Error(w, "Unable to store user credentials", http.StatusInternalServerError)
 		return
 	}
 
-	// Prepare data that will be sent to the other service
-	var payloadUser domain.UserPayload = domain.UserPayload{
-		AuthUserID: authUser.ID,
+	payloadUser := domain.UserPayload{
+		AuthUserID: createdUser.ID,
 		Username:   register.Username,
 		Role:       register.Role,
 		Email:      register.Email,
 	}
+
 	payloadBytes, err := json.Marshal(payloadUser)
 	if err != nil {
-		http.Error(w, "Unable to marshal payload: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Payload marshal error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	response, err := http.Post("http://localhost:8000/users/", "application/json", bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		http.Error(w, "Failed to make request: "+err.Error(), http.StatusInternalServerError)
+	client := &http.Client{Timeout: 5 * time.Second}
+	response, err := client.Post("http://localhost:8000/users/", "application/json", bytes.NewBuffer(payloadBytes))
+	if err != nil || response.StatusCode >= 400 {
+		// Rollback user creation on failure
+		rollbackErr := auth.ur.Delete(createdUser)
+		if rollbackErr != nil {
+			log.Printf("Failed to rollback user ID %d: %v", createdUser.ID, rollbackErr)
+		}
+
+		if err != nil {
+			http.Error(w, "Failed to make request: "+err.Error(), http.StatusInternalServerError)
+		} else {
+			defer response.Body.Close()
+			responseBody, _ := io.ReadAll(response.Body)
+			http.Error(w, "User service error: "+string(responseBody), response.StatusCode)
+		}
 		return
 	}
 	defer response.Body.Close()
-
-	if response.StatusCode >= 400 {
-		err := auth.ur.Delete(authUser)
-		if err != nil {
-			http.Error(w, "Unable to delete user credentials: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
