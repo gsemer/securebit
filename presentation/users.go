@@ -28,19 +28,19 @@ type RegisterRequest struct {
 }
 
 func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var register RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&register); err != nil {
+	var registerReq RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&registerReq); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Basic validation
-	if register.Username == "" || register.Password == "" || register.Email == "" {
+	if registerReq.Username == "" || registerReq.Password == "" || registerReq.Email == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(register.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerReq.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Password hashing error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -48,7 +48,7 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authUser := domain.AuthUser{
-		Username:       register.Username,
+		Username:       registerReq.Username,
 		HashedPassword: string(hashedPassword),
 	}
 
@@ -61,9 +61,9 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	payloadUser := domain.UserPayload{
 		AuthUserID: createdUser.ID,
-		Username:   register.Username,
-		Role:       register.Role,
-		Email:      register.Email,
+		Username:   registerReq.Username,
+		Role:       registerReq.Role,
+		Email:      registerReq.Email,
 	}
 
 	payloadBytes, err := json.Marshal(payloadUser)
@@ -104,27 +104,27 @@ type LoginRequest struct {
 }
 
 func (auth *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var register LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&register); err != nil {
+	var loginReq LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if register.Username == "" || register.Password == "" {
+	if loginReq.Username == "" || loginReq.Password == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
 	}
 
-	authUser, err := auth.ur.Get(register.Username)
+	authUser, err := auth.ur.Get(loginReq.Username)
 	if err != nil {
-		log.Printf("No such a user exists: %v", register.Username)
+		log.Printf("No such a user exists: %v", loginReq.Username)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(authUser.HashedPassword), []byte(register.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(authUser.HashedPassword), []byte(loginReq.Password)); err != nil {
 		log.Printf("Password and hashed password do not match")
-		http.Error(w, "Wrong password for user "+authUser.Username, http.StatusBadRequest)
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
