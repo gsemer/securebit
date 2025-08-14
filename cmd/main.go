@@ -21,7 +21,7 @@ func main() {
 	r := mux.NewRouter()
 	api := r.PathPrefix("/v1").Subrouter()
 	api.HandleFunc("/register", handler.Register).Methods("POST")
-	api.HandleFunc("/login", nil).Methods("POST")
+	api.HandleFunc("/login", handler.Login).Methods("POST")
 	api.HandleFunc("/logout", nil).Methods("POST")
 	api.HandleFunc("/refresh", nil).Methods("POST")
 	api.HandleFunc("/validate", nil).Methods("POST")
