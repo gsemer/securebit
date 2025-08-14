@@ -103,3 +103,45 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(response.StatusCode)
 	w.Write(responseBody)
 }
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (auth *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var register LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&register); err != nil {
+		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if register.Username == "" || register.Password == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	authUser, err := auth.ur.Get(register.Username)
+	if err != nil {
+		log.Printf("No such a user exists: %v", register.Username)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(authUser.HashedPassword), []byte(register.Password)); err != nil {
+		log.Printf("Password and hashed password do not match")
+		http.Error(w, "Wrong password for user "+authUser.Username, http.StatusBadRequest)
+		return
+	}
+
+	authUserBytes, err := json.Marshal(authUser)
+	if err != nil {
+		log.Printf("Auth user marshal error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(authUserBytes)
+}
