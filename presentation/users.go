@@ -1,13 +1,10 @@
 package presentation
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"securebit/domain"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,113 +19,72 @@ func NewAuthHandler(ur domain.UserRepository) *AuthHandler {
 	}
 }
 
-type RegisterRequest struct {
-	Password string `json:"password"`
-	*domain.UserPayload
-}
-
-func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var registerReq RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&registerReq); err != nil {
+func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var registerRequest domain.UserRequest
+	if err := json.NewDecoder(r.Body).Decode(&registerRequest); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Basic validation
-	if registerReq.Username == "" || registerReq.Password == "" || registerReq.Email == "" {
+	if registerRequest.Username == "" || registerRequest.Password == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerReq.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Password hashing error: %v", err)
+		log.Printf("Failed to hash the password: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	authUser := domain.AuthUser{
-		Username:       registerReq.Username,
+	user := domain.User{
+		Username:       registerRequest.Username,
 		HashedPassword: string(hashedPassword),
 	}
 
-	createdUser, err := auth.ur.Create(authUser)
+	userDB, err := ah.ur.Create(user)
 	if err != nil {
 		log.Printf("User creation error: %v", err)
 		http.Error(w, "Unable to store user credentials", http.StatusInternalServerError)
 		return
 	}
 
-	payloadUser := domain.UserPayload{
-		AuthUserID: createdUser.ID,
-		Username:   registerReq.Username,
-		Role:       registerReq.Role,
-		Email:      registerReq.Email,
-	}
-
-	payloadBytes, err := json.Marshal(payloadUser)
+	userBytes, err := json.Marshal(userDB)
 	if err != nil {
-		log.Printf("Payload marshal error: %v", err)
+		log.Printf("Failed to marshal the user: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	response, err := client.Post("http://localhost:8000/users/", "application/json", bytes.NewBuffer(payloadBytes))
-	if err != nil || response.StatusCode >= 400 {
-		// Rollback user creation on failure
-		rollbackErr := auth.ur.Delete(createdUser)
-		if rollbackErr != nil {
-			log.Printf("Failed to rollback user ID %d: %v", createdUser.ID, rollbackErr)
-		}
-
-		if err != nil {
-			http.Error(w, "Failed to make request: "+err.Error(), http.StatusInternalServerError)
-		} else {
-			defer response.Body.Close()
-			responseBody, _ := io.ReadAll(response.Body)
-			http.Error(w, "User service error: "+string(responseBody), response.StatusCode)
-		}
-		return
-	}
-	defer response.Body.Close()
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(response.StatusCode)
-	w.Write([]byte("user created"))
+	w.WriteHeader(http.StatusOK)
+	w.Write(userBytes)
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (auth *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var loginReq LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var loginRequest domain.UserRequest
+	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if loginReq.Username == "" || loginReq.Password == "" {
+	if loginRequest.Username == "" || loginRequest.Password == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
 	}
 
-	authUser, err := auth.ur.Get(loginReq.Username)
+	user, err := ah.ur.Get(loginRequest.Username)
 	if err != nil {
-		log.Printf("No such a user exists: %v", loginReq.Username)
+		log.Printf("User %v not found in database", loginRequest.Username)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(authUser.HashedPassword), []byte(loginReq.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(loginRequest.Password)); err != nil {
 		log.Printf("Password and hashed password do not match")
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte("user logged in"))
+	w.WriteHeader(http.StatusOK)
 }

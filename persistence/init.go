@@ -43,7 +43,7 @@ func (config *PostgresConfig) Init() (*gorm.DB, error) {
 	}
 
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
-	db.AutoMigrate(&domain.AuthUser{})
+	db.AutoMigrate(&domain.User{})
 
 	return db, nil
 }
