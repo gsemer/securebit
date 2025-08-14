@@ -93,15 +93,9 @@ func (auth *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer response.Body.Close()
 
-	responseBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		http.Error(w, "Failed to read response", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(response.StatusCode)
-	w.Write(responseBody)
+	w.Write([]byte("user created"))
 }
 
 type LoginRequest struct {
@@ -134,14 +128,7 @@ func (auth *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authUserBytes, err := json.Marshal(authUser)
-	if err != nil {
-		log.Printf("Auth user marshal error: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(authUserBytes)
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("user logged in"))
 }
