@@ -9,11 +9,6 @@ type UserPayload struct {
 	Email      string    `json:"email"`
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 type AuthUser struct {
 	ID             uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey" json:"id"`
 	Username       string    `gorm:"type:text;not null;unique" json:"username"`
@@ -23,4 +18,5 @@ type AuthUser struct {
 type UserRepository interface {
 	Create(authUser AuthUser) (AuthUser, error)
 	Delete(authUser AuthUser) error
+	Get(username string) (AuthUser, error)
 }
