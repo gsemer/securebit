@@ -15,8 +15,11 @@ func main() {
 		log.Fatal("Unable to connect to database: ", err)
 	}
 
+	redisConfig := persistence.NewRedisConfig()
+	redisClient := redisConfig.Init()
+
 	userRepo := persistence.NewUserRepository(db)
-	handler := presentation.NewAuthHandler(userRepo)
+	handler := presentation.NewAuthHandler(userRepo, redisClient)
 
 	r := mux.NewRouter()
 	api := r.PathPrefix("/v1").Subrouter()

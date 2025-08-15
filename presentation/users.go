@@ -6,16 +6,19 @@ import (
 	"net/http"
 	"securebit/domain"
 
+	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	ur domain.UserRepository
+	ur          domain.UserRepository
+	redisClient *redis.Client
 }
 
-func NewAuthHandler(ur domain.UserRepository) *AuthHandler {
+func NewAuthHandler(ur domain.UserRepository, redisClient *redis.Client) *AuthHandler {
 	return &AuthHandler{
-		ur: ur,
+		ur:          ur,
+		redisClient: redisClient,
 	}
 }
 
