@@ -20,6 +20,7 @@ func NewAuthHandler(ur domain.UserRepository) *AuthHandler {
 }
 
 func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	// Request validation
 	var registerRequest domain.UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&registerRequest); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
@@ -31,18 +32,17 @@ func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hash the password & create user
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Failed to hash the password: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	user := domain.User{
 		Username:       registerRequest.Username,
 		HashedPassword: string(hashedPassword),
 	}
-
 	userDB, err := ah.ur.Create(user)
 	if err != nil {
 		log.Printf("User creation error: %v", err)
@@ -62,6 +62,7 @@ func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	// Request validation
 	var loginRequest domain.UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&loginRequest); err != nil {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
@@ -73,6 +74,7 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// User credentials validation
 	user, err := ah.ur.Get(loginRequest.Username)
 	if err != nil {
 		log.Printf("User %v not found in database", loginRequest.Username)
