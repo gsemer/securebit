@@ -103,7 +103,7 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Create refresh token (longer-lived)
 	signedRefreshToken, err := utils.SignedToken(user, time.Now().Add(24*time.Hour), config.GetEnv("JWT_REFRESH_SECRET_KEY", ""))
 	if errors.Is(err, domain.ErrTokenSigningFailed) {
-		log.Print("Failed to sign access token")
+		log.Print("Failed to sign refresh token")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
