@@ -1,10 +1,15 @@
 package presentation
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"securebit/config"
 	"securebit/domain"
+	"securebit/utils"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/bcrypt"
@@ -29,7 +34,6 @@ func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if registerRequest.Username == "" || registerRequest.Password == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
@@ -71,7 +75,6 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if loginRequest.Username == "" || loginRequest.Password == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
@@ -84,12 +87,31 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(loginRequest.Password)); err != nil {
 		log.Printf("Password and hashed password do not match")
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
+	// Create access token (short-lived)
+	signedAccessToken, err := utils.SignedToken(user, time.Now().Add(5*time.Minute), config.GetEnv("JWT_SECRET_KEY", ""))
+	if errors.Is(err, domain.ErrTokenSigningFailed) {
+		log.Print("Failed to sign access token")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	// Create refresh token (longer-lived)
+	signedRefreshToken, err := utils.SignedToken(user, time.Now().Add(24*time.Hour), config.GetEnv("JWT_REFRESH_SECRET_KEY", ""))
+	if errors.Is(err, domain.ErrTokenSigningFailed) {
+		log.Print("Failed to sign access token")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Store refresh token in Redis
+	ah.redisClient.Set(context.Background(), user.ID.String(), signedRefreshToken, 24*time.Hour)
+
+	w.Header().Set("Authorization", "Bearer "+signedAccessToken)
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("user logged in"))
 }
