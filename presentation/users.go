@@ -108,6 +108,18 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set refresh token to Cookie
+	// Client can't use it directly but browser send it automatically for refresh
+	// Javascript can't access it, so it is protected against XSS attacks
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    signedRefreshToken,
+		HttpOnly: true,
+		Secure:   false,             // Set to true in production with HTTPS
+		Path:     "/api/v1/refresh", // Limit cookie to refresh token endpoint
+		MaxAge:   24 * 3600,         // 24 hours in seconds
+		SameSite: http.SameSiteStrictMode,
+	})
 	// Store refresh token in Redis
 	ah.redisClient.Set(context.Background(), user.ID.String(), signedRefreshToken, 24*time.Hour)
 
