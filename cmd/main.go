@@ -22,7 +22,7 @@ func main() {
 	handler := presentation.NewAuthHandler(userRepo, redisClient)
 
 	r := mux.NewRouter()
-	api := r.PathPrefix("/v1").Subrouter()
+	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/register", handler.Register).Methods("POST")
 	api.HandleFunc("/login", handler.Login).Methods("POST")
 	api.HandleFunc("/logout", nil).Methods("POST")
