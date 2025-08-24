@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"errors"
-	"fmt"
 	"securebit/domain"
 
 	"gorm.io/gorm"
@@ -28,7 +27,7 @@ func (ur *UserRepository) Get(username string) (domain.User, error) {
 	var user domain.User
 	err := ur.db.Where("username = ?", username).First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return domain.User{}, errors.New(fmt.Sprintf("User %v not found", username))
+		return domain.User{}, domain.ErrUserNotFound
 	}
 	if err != nil {
 		return domain.User{}, errors.New("DB error")

@@ -27,7 +27,7 @@ func main() {
 	api.HandleFunc("/login", handler.Login).Methods("POST")
 	api.HandleFunc("/logout", nil).Methods("POST")
 	api.HandleFunc("/refresh", nil).Methods("POST")
-	api.HandleFunc("/validate", nil).Methods("POST")
+	api.HandleFunc("/validate", handler.Validate).Methods("POST")
 
 	server := presentation.NewCustomServer(r, "localhost:8080")
 	server.Start()

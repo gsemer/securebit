@@ -2,6 +2,12 @@ package domain
 
 import "github.com/google/uuid"
 
+type ContextKey string
+
+const (
+	UserIDKey ContextKey = "userID"
+)
+
 type UserRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

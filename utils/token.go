@@ -2,6 +2,7 @@ package utils
 
 import (
 	"securebit/domain"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,4 +23,12 @@ func SignedToken(user domain.User, duration time.Time, secretKey string) (string
 	}
 
 	return signedToken, nil
+}
+
+func Validate(token string, prefix string) (string, error) {
+	if !strings.HasPrefix(token, prefix) {
+		return "", domain.ErrInvalidTokenFormat
+	}
+	splitToken := strings.Split(token, " ")
+	return splitToken[1], nil
 }

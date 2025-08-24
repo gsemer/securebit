@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -82,7 +83,7 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// User credentials validation
 	user, err := ah.ur.Get(loginRequest.Username)
-	if err != nil {
+	if errors.Is(err, domain.ErrUserNotFound) {
 		log.Printf("User %v not found in database", loginRequest.Username)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -126,4 +127,35 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Authorization", "Bearer "+signedAccessToken)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("user logged in"))
+}
+
+func (auth *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
+	bearerToken := r.Header.Get("Authorization")
+
+	tokenString, err := utils.Validate(bearerToken, "Bearer ")
+	if errors.Is(err, domain.ErrInvalidTokenFormat) {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &domain.Claims{}, func(token *jwt.Token) (any, error) {
+		return []byte(config.GetEnv("JWT_SECRET_KEY", "")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+	claims, ok := token.Claims.(*domain.Claims)
+	if !ok {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Inject user ID into the request.
+	// !Very important step when it is used as Middleware to validate the token
+	ctx := context.WithValue(r.Context(), domain.UserIDKey, claims.Subject)
+	r = r.WithContext(ctx)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Token is valid. Username: " + claims.Username))
 }
