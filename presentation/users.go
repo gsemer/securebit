@@ -198,7 +198,6 @@ func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-type", "application/json")
 	w.Header().Set("Authorization", "Bearer "+accessToken)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("access token refreshed"))
