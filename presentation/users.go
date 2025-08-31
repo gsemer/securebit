@@ -95,14 +95,14 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create access token (short-lived)
-	signedAccessToken, err := utils.SignedToken(user, time.Now().Add(5*time.Minute), config.GetEnv("JWT_SECRET_KEY", ""))
+	signedAccessToken, err := utils.SignedToken(user.ID.String(), time.Now().Add(5*time.Minute), config.GetEnv("JWT_SECRET_KEY", ""))
 	if errors.Is(err, domain.ErrTokenSigningFailed) {
 		log.Print("Failed to sign access token")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	// Create refresh token (longer-lived)
-	signedRefreshToken, err := utils.SignedToken(user, time.Now().Add(24*time.Hour), config.GetEnv("JWT_REFRESH_SECRET_KEY", ""))
+	signedRefreshToken, err := utils.SignedToken(user.ID.String(), time.Now().Add(24*time.Hour), config.GetEnv("JWT_REFRESH_SECRET_KEY", ""))
 	if errors.Is(err, domain.ErrTokenSigningFailed) {
 		log.Print("Failed to sign refresh token")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -131,6 +131,9 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (auth *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	bearerToken := r.Header.Get("Authorization")
+	if bearerToken == "" {
+		http.Error(w, domain.ErrTokenNotFound.Error(), http.StatusUnauthorized)
+	}
 
 	tokenString, err := utils.Validate(bearerToken, "Bearer ")
 	if errors.Is(err, domain.ErrInvalidTokenFormat) {
@@ -157,5 +160,45 @@ func (auth *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(ctx)
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Token is valid. Username: " + claims.Username))
+	w.Write([]byte("Token is valid"))
+}
+
+func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	refreshCookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		http.Error(w, domain.ErrTokenNotFound.Error(), http.StatusUnauthorized)
+		return
+	}
+	refreshToken := refreshCookie.Value
+
+	token, err := jwt.ParseWithClaims(refreshToken, &domain.Claims{}, func(token *jwt.Token) (any, error) {
+		return []byte(config.GetEnv("JWT_REFRESH_SECRET_KEY", "")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+	claims, ok := token.Claims.(*domain.Claims)
+	if !ok {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	storedToken, err := auth.redisClient.Get(context.Background(), claims.Subject).Result()
+	if err != nil || storedToken != refreshToken {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	accessToken, err := utils.SignedToken(claims.Subject, time.Now().Add(24*time.Hour), config.GetEnv("JWT_SECRET_KEY", ""))
+	if errors.Is(err, domain.ErrTokenSigningFailed) {
+		log.Print("Failed to sign a new access token")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.Header().Set("Authorization", "Bearer "+accessToken)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("access token refreshed"))
 }
