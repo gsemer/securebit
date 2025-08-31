@@ -25,7 +25,7 @@ func main() {
 	api := r.PathPrefix("/api/v1").Subrouter()
 	api.HandleFunc("/register", handler.Register).Methods("POST")
 	api.HandleFunc("/login", handler.Login).Methods("POST")
-	api.HandleFunc("/logout", nil).Methods("POST")
+	api.HandleFunc("/logout", handler.Logout).Methods("POST")
 	api.HandleFunc("/refresh", handler.Refresh).Methods("POST")
 	api.HandleFunc("/validate", handler.Validate).Methods("POST")
 

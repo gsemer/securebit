@@ -116,9 +116,9 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "refresh_token",
 		Value:    signedRefreshToken,
 		HttpOnly: true,
-		Secure:   false,             // Set to true in production with HTTPS
-		Path:     "/api/v1/refresh", // Limit cookie to refresh token endpoint
-		MaxAge:   24 * 3600,         // 24 hours in seconds
+		Secure:   false,     // Set to true in production with HTTPS
+		Path:     "/",       // Include cookie on all relevant requestsS
+		MaxAge:   24 * 3600, // 24 hours in seconds
 		SameSite: http.SameSiteStrictMode,
 	})
 	// Store refresh token in Redis
@@ -201,4 +201,45 @@ func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Authorization", "Bearer "+accessToken)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("access token refreshed"))
+}
+
+func (auth *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	refreshCookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		http.Error(w, domain.ErrTokenNotFound.Error(), http.StatusUnauthorized)
+		return
+	}
+	refreshToken := refreshCookie.Value
+
+	// Validate refresh token
+	token, err := jwt.ParseWithClaims(refreshToken, &domain.Claims{}, func(token *jwt.Token) (any, error) {
+		return []byte(config.GetEnv("JWT_REFRESH_SECRET_KEY", "")), nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+	claims, ok := token.Claims.(*domain.Claims)
+	if !ok {
+		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Delete refresh token from Redis
+	auth.redisClient.Del(context.Background(), claims.Subject)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false, // Set to true in production
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("user logged out"))
+
 }
