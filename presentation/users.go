@@ -133,6 +133,7 @@ func (auth *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	bearerToken := r.Header.Get("Authorization")
 	if bearerToken == "" {
 		http.Error(w, domain.ErrTokenNotFound.Error(), http.StatusUnauthorized)
+		return
 	}
 
 	tokenString, err := utils.Validate(bearerToken, "Bearer ")
