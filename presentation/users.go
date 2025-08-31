@@ -172,6 +172,7 @@ func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 	refreshToken := refreshCookie.Value
 
+	// Validate refresh token
 	token, err := jwt.ParseWithClaims(refreshToken, &domain.Claims{}, func(token *jwt.Token) (any, error) {
 		return []byte(config.GetEnv("JWT_REFRESH_SECRET_KEY", "")), nil
 	})
@@ -184,7 +185,7 @@ func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
 		return
 	}
-
+	// Check Redis if the token is still valid
 	storedToken, err := auth.redisClient.Get(context.Background(), claims.Subject).Result()
 	if err != nil || storedToken != refreshToken {
 		http.Error(w, domain.ErrExpiredToken.Error(), http.StatusUnauthorized)
@@ -197,7 +198,6 @@ func (auth *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Authorization", "Bearer "+accessToken)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("access token refreshed"))
