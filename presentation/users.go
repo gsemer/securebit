@@ -117,7 +117,7 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    signedRefreshToken,
 		HttpOnly: true,
 		Secure:   false,     // Set to true in production with HTTPS
-		Path:     "/",       // Include cookie on all relevant requestsS
+		Path:     "/",       // Include cookie on all relevant requests
 		MaxAge:   24 * 3600, // 24 hours in seconds
 		SameSite: http.SameSiteStrictMode,
 	})
