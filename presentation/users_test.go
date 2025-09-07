@@ -69,7 +69,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	mockRedisClient := new(MockRedisClient)
-	mockRedisClient.On("Set", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), 24*time.Hour).Return(nil)
+	mockRedisClient.On("Set", mock.Anything, mock.AnythingOfType("string"), "token", 24*time.Hour).Return(nil)
 
 	loginRequest := &domain.UserRequest{
 		Username: "username",
