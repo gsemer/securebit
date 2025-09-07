@@ -19,6 +19,12 @@ type User struct {
 	HashedPassword string    `gorm:"type:text;not null" json:"-"`
 }
 
+type UserService interface {
+	Create(user User) (User, error)
+	Get(username string) (User, error)
+	Delete(use User) error
+}
+
 type UserRepository interface {
 	Create(user User) (User, error)
 	Get(username string) (User, error)

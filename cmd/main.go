@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"securebit/app/services"
 	"securebit/persistence"
 	"securebit/presentation"
 
@@ -19,7 +20,8 @@ func main() {
 	redisClient := redisConfig.Init()
 
 	userRepo := persistence.NewUserRepository(db)
-	handler := presentation.NewAuthHandler(userRepo, redisClient)
+	userService := services.NewUserService(userRepo)
+	handler := presentation.NewAuthHandler(userService, redisClient)
 
 	r := mux.NewRouter()
 	api := r.PathPrefix("/api/v1").Subrouter()

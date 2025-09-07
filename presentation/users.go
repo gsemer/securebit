@@ -17,13 +17,13 @@ import (
 )
 
 type AuthHandler struct {
-	ur          domain.UserRepository
+	us          domain.UserService
 	redisClient *redis.Client
 }
 
-func NewAuthHandler(ur domain.UserRepository, redisClient *redis.Client) *AuthHandler {
+func NewAuthHandler(us domain.UserService, redisClient *redis.Client) *AuthHandler {
 	return &AuthHandler{
-		ur:          ur,
+		us:          us,
 		redisClient: redisClient,
 	}
 }
@@ -51,7 +51,7 @@ func (ah *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Username:       registerRequest.Username,
 		HashedPassword: string(hashedPassword),
 	}
-	userDB, err := ah.ur.Create(user)
+	userDB, err := ah.us.Create(user)
 	if err != nil {
 		log.Printf("User creation error: %v", err)
 		http.Error(w, "Unable to store user credentials", http.StatusInternalServerError)
@@ -82,7 +82,7 @@ func (ah *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// User credentials validation
-	user, err := ah.ur.Get(loginRequest.Username)
+	user, err := ah.us.Get(loginRequest.Username)
 	if errors.Is(err, domain.ErrUserNotFound) {
 		log.Printf("User %v not found in database", loginRequest.Username)
 		http.Error(w, err.Error(), http.StatusBadRequest)
