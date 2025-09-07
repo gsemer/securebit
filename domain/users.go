@@ -28,5 +28,5 @@ type UserService interface {
 type UserRepository interface {
 	Create(user User) (User, error)
 	Get(username string) (User, error)
-	Delete(use User) error
+	Delete(user User) error
 }
