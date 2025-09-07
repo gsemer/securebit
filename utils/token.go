@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func SignedToken(userID string, duration time.Time, secretKey string) (string, error) {
+var SignedToken = func(userID string, duration time.Time, secretKey string) (string, error) {
 	claims := domain.Claims{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Subject:   userID,
