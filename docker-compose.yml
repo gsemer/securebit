@@ -1,0 +1,34 @@
+version: '3.7'
+
+networks:
+  application:
+
+services:
+  
+  auth-db:
+    image: postgres
+    container_name: auth-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: securebit
+    ports:
+      - 5434:5432
+    volumes:
+      - auth_data:/var/lib/postgresql/auth/
+    networks:
+      - application
+    
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - application
+
+volumes:
+  auth_data:
+  redis_data:
